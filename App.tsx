@@ -3,11 +3,11 @@ import { auth, db } from './firebase';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
-  onAuthStateChanged,
   signOut,
-  User
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Dashboard from './components/Dashboard';
 
 
 // --- SVG Icon Components (existing) ---
@@ -94,15 +94,19 @@ interface PageSetterProps {
 interface HeaderProps {
     theme: string;
     toggleTheme: () => void;
-    user: User | null;
     setPage: (page: Page) => void;
-    handleLogout: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, user, setPage, handleLogout }) => {
+const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, setPage }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { currentUser } = useAuth();
     
-    const navLinks = user 
+    const handleLogout = async () => {
+      await signOut(auth);
+      setPage('landing');
+    }
+
+    const navLinks = currentUser 
       ? [{ name: 'Dashboard', page: 'dashboard' as Page }]
       : [
           { name: 'Features', page: 'landing' as Page, href: '#features' }, 
@@ -125,7 +129,7 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, user, setPage, hand
                        <a key={link.name} onClick={() => handleNavClick(link.page)} href={link.href || '#'} className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors duration-300 cursor-pointer">{link.name}</a>
                     ))}
 
-                    {user ? (
+                    {currentUser ? (
                         <button onClick={handleLogout} className="bg-black text-white font-semibold px-5 py-2 rounded-md hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition-colors duration-300">
                             Logout
                         </button>
@@ -151,7 +155,7 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, user, setPage, hand
                         {navLinks.map(link => (
                             <a key={link.name} onClick={() => handleNavClick(link.page)} href={link.href || '#'} className="text-gray-600 hover:text-black dark:text-gray-300 dark:hover:text-white transition-colors duration-300 text-center">{link.name}</a>
                         ))}
-                         {user ? (
+                         {currentUser ? (
                             <button onClick={handleLogout} className="bg-black text-white font-semibold px-5 py-2 rounded-md hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition-colors duration-300 text-center w-full">
                                 Logout
                             </button>
@@ -315,7 +319,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage, setErrorMessage 
             } else {
                 await signInWithEmailAndPassword(auth, email, password);
             }
-            // onAuthStateChanged will handle redirect
+            // onAuthStateChanged in AuthContext will handle redirect
         } catch (error: any) {
             setErrorMessage(error.message);
         } finally {
@@ -365,54 +369,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage, setErrorMessage 
     );
 };
 
-
-// --- Dashboard Component ---
-const Dashboard: React.FC<{ user: User }> = ({ user }) => {
-    const [credits, setCredits] = useState<number | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchUserData = async () => {
-            if (user) {
-                const userDocRef = doc(db, "users", user.uid);
-                const userDoc = await getDoc(userDocRef);
-                if (userDoc.exists()) {
-                    setCredits(userDoc.data().credits);
-                }
-                setLoading(false);
-            }
-        };
-        fetchUserData();
-    }, [user]);
-
-    return (
-        <div className="container mx-auto px-6 py-12 text-black dark:text-white">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">Welcome to your Dashboard</h1>
-            <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">Here's an overview of your account.</p>
-            <div className="bg-gray-50 dark:bg-gray-900 p-8 rounded-lg border border-gray-200 dark:border-gray-800 max-w-sm">
-                <h2 className="text-xl font-semibold mb-4">Account Details</h2>
-                <p><strong>Email:</strong> {user.email}</p>
-                <div className="mt-4">
-                    <strong>Credits Remaining:</strong>
-                    {loading ? (
-                        <span className="ml-2">Loading...</span>
-                    ) : (
-                        <span className="ml-2 text-2xl font-bold">{credits ?? 'N/A'}</span>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-// --- Main App Component ---
-const App: React.FC = () => {
+// --- App Content Component ---
+const AppContent: React.FC = () => {
   const [theme, setTheme] = useState('light');
-  const [user, setUser] = useState<User | null>(null);
   const [page, setPage] = useState<Page>('landing');
-  const [loadingAuth, setLoadingAuth] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-  
+  const { currentUser, loading: loadingAuth } = useAuth();
+
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -430,28 +393,23 @@ const App: React.FC = () => {
     }
   }, [theme]);
 
+  // Effect for handling page navigation based on auth state
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        setUser(currentUser);
-        if (currentUser) {
+    if (!loadingAuth) {
+      if (currentUser) {
+        if (page !== 'dashboard') {
             setPage('dashboard');
-        } else {
-            // only redirect to landing if user is not on an auth page already
-            if(page === 'dashboard') {
-               setPage('landing');
-            }
         }
-        setLoadingAuth(false);
-    });
-    return () => unsubscribe();
-  }, [page]);
+      } else {
+        if (page === 'dashboard') {
+          setPage('landing');
+        }
+      }
+    }
+  }, [currentUser, loadingAuth, page]);
+
 
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
-
-  const handleLogout = async () => {
-    await signOut(auth);
-    setPage('landing');
-  }
 
   const renderPage = () => {
       if(loadingAuth) {
@@ -464,7 +422,7 @@ const App: React.FC = () => {
           case 'signup':
               return <AuthForm isSignUp={true} setPage={setPage} setErrorMessage={setErrorMessage} />;
           case 'dashboard':
-              return user ? <Dashboard user={user} /> : <AuthForm isSignUp={false} setPage={setPage} setErrorMessage={setErrorMessage} />;
+              return currentUser ? <Dashboard /> : <AuthForm isSignUp={false} setPage={setPage} setErrorMessage={setErrorMessage} />;
           case 'landing':
           default:
               return <LandingPage setPage={setPage} />;
@@ -473,13 +431,23 @@ const App: React.FC = () => {
 
   return (
     <div className="bg-white dark:bg-black min-h-screen font-sans transition-colors duration-300">
-      <Header theme={theme} toggleTheme={toggleTheme} user={user} setPage={setPage} handleLogout={handleLogout} />
+      <Header theme={theme} toggleTheme={toggleTheme} setPage={setPage} />
       <main>
         {errorMessage && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative container mx-auto mt-4" role="alert">{errorMessage}</div>}
         {renderPage()}
       </main>
       {page === 'landing' && <Footer />}
     </div>
+  );
+};
+
+
+// --- Main App Component ---
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 
