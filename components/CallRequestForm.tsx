@@ -2,10 +2,20 @@ import React, { useState } from 'react';
 import retellService from '../services/retellService';
 import { useAuth } from '../contexts/AuthContext';
 
+const countryCodes = [
+  { code: '+1', country: 'USA/CAN' },
+  { code: '+44', country: 'UK' },
+  { code: '+91', country: 'India' },
+  { code: '+61', country: 'Australia' },
+  { code: '+81', country: 'Japan' },
+  { code: '+49', country: 'Germany' },
+];
+
 const CallRequestForm: React.FC = () => {
   const { currentUser, credits, updateCredits } = useAuth();
+  const [countryCode, setCountryCode] = useState('+1');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [formData, setFormData] = useState({
-    phoneNumber: '',
     fullName: '',
     callTime: 'Immediately',
     industry: 'Real Estate',
@@ -19,25 +29,40 @@ const CallRequestForm: React.FC = () => {
   // Your provisioned number - Replace with your actual number
   const FROM_NUMBER = '+1XXXYYYZZZZ'; 
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleFormDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
   };
+  
+  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    // Allow only numeric input
+    if (/^\d*$/.test(value)) {
+        setPhoneNumber(value);
+    }
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setStatus({ type: '', message: '' });
 
     if (!currentUser) {
       setStatus({ type: 'error', message: 'Please sign in to request a call.' });
       return;
     }
     
-    if (!formData.phoneNumber) {
-      setStatus({ type: 'error', message: 'Phone number is required' });
+    if (!phoneNumber) {
+      setStatus({ type: 'error', message: 'Phone number is required.' });
       return;
+    }
+
+    if (!/^\d{10}$/.test(phoneNumber)) {
+        setStatus({ type: 'error', message: 'Please enter a valid 10-digit phone number.' });
+        return;
     }
 
     if (credits === null || credits <= 0) {
@@ -46,10 +71,9 @@ const CallRequestForm: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    setStatus({ type: '', message: '' });
 
     try {
-      // Format the call data with form information
+      const fullPhoneNumber = `${countryCode}${phoneNumber}`;
       const callData = {
         customer_name: formData.fullName || 'Valued Customer',
         call_time: formData.callTime,
@@ -60,7 +84,7 @@ const CallRequestForm: React.FC = () => {
       // This is a call to your backend, which will then securely call the Retell API
       await retellService.makeCall({
         agentId: AGENT_ID,
-        toNumber: formData.phoneNumber,
+        toNumber: fullPhoneNumber,
         fromNumber: FROM_NUMBER,
         userId: currentUser.uid,
         callData,
@@ -76,8 +100,8 @@ const CallRequestForm: React.FC = () => {
       });
       
       // Reset form after successful submission
+      setPhoneNumber('');
       setFormData({
-        phoneNumber: '',
         fullName: '',
         callTime: 'Immediately',
         industry: 'Real Estate',
@@ -111,17 +135,31 @@ const CallRequestForm: React.FC = () => {
           <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Phone Number <span className="text-red-500">*</span>
           </label>
-          <input
-            type="tel"
-            id="phoneNumber"
-            name="phoneNumber"
-            value={formData.phoneNumber}
-            onChange={handleChange}
-            placeholder="+1234567890 (E.164 format)"
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white"
-            required
-            disabled={!canSubmit}
-          />
+          <div className="flex">
+            <select
+                id="countryCode"
+                name="countryCode"
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-l-md focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                disabled={!canSubmit}
+                aria-label="Country Code"
+            >
+                {countryCodes.map(c => <option key={c.code} value={c.code}>{c.country} ({c.code})</option>)}
+            </select>
+            <input
+              type="tel"
+              id="phoneNumber"
+              name="phoneNumber"
+              value={phoneNumber}
+              onChange={handlePhoneNumberChange}
+              placeholder="10-digit number"
+              className="w-full px-4 py-2 border border-gray-300 rounded-r-md focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+              required
+              disabled={!canSubmit}
+              maxLength={10}
+            />
+          </div>
         </div>
 
         <div>
@@ -133,7 +171,7 @@ const CallRequestForm: React.FC = () => {
             id="fullName"
             name="fullName"
             value={formData.fullName}
-            onChange={handleChange}
+            onChange={handleFormDataChange}
             placeholder="John Doe"
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             disabled={!canSubmit}
@@ -152,7 +190,7 @@ const CallRequestForm: React.FC = () => {
                   name="callTime"
                   value={time}
                   checked={formData.callTime === time}
-                  onChange={handleChange}
+                  onChange={handleFormDataChange}
                   className="h-4 w-4 text-black focus:ring-black border-gray-300 dark:bg-gray-700 dark:border-gray-600"
                   disabled={!canSubmit}
                 />
@@ -170,7 +208,7 @@ const CallRequestForm: React.FC = () => {
             id="industry"
             name="industry"
             value={formData.industry}
-            onChange={handleChange}
+            onChange={handleFormDataChange}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             disabled={!canSubmit}
           >
@@ -191,7 +229,7 @@ const CallRequestForm: React.FC = () => {
             id="message"
             name="message"
             value={formData.message}
-            onChange={handleChange}
+            onChange={handleFormDataChange}
             rows={3}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white"
             placeholder="Tell us what you'd like to discuss..."

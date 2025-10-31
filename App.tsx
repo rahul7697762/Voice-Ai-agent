@@ -81,11 +81,16 @@ const IntegrationIcon: React.FC<{ className?: string }> = ({ className }) => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
   </svg>
 );
+const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.052-.143z" clipRule="evenodd" />
+  </svg>
+);
 
 
 // --- Page Section Components ---
 
-type Page = 'landing' | 'login' | 'signup' | 'dashboard';
+type Page = 'landing' | 'login' | 'signup' | 'dashboard' | 'pricing';
 
 interface PageSetterProps {
     setPage: (page: Page) => void;
@@ -111,7 +116,7 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, setPage }) => {
       : [
           { name: 'Features', page: 'landing' as Page, href: '#features' }, 
           { name: 'Use Cases', page: 'landing' as Page, href: '#use-cases' }, 
-          { name: 'Pricing', page: 'landing' as Page, href: '#pricing' },
+          { name: 'Pricing', page: 'pricing' as Page },
         ];
 
     const handleNavClick = (page: Page) => {
@@ -274,11 +279,11 @@ const CTA: React.FC<PageSetterProps> = ({ setPage }) => (
     </section>
 );
 
-const Footer: React.FC = () => {
+const Footer: React.FC<PageSetterProps> = ({ setPage }) => {
     const footerLinks = { Product: ["Features", "Pricing", "Integrations", "API"], Company: ["About", "Careers", "Press", "Contact"], Support: ["Help Center", "Documentation", "Status", "Community"] };
     return (
         <footer className="py-16 text-gray-600 dark:text-gray-400">
-            <div className="container mx-auto px-6"><div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12"><div className="md:col-span-2 lg:col-span-1"><h3 className="text-black dark:text-white text-xl font-bold mb-2">AutoCall Pro</h3><p className="max-w-xs">Revolutionizing customer engagement through intelligent automated calling solutions.</p></div>{Object.entries(footerLinks).map(([title, links]) => (<div key={title}><h4 className="font-semibold text-black dark:text-white mb-4">{title}</h4><ul className="space-y-3">{links.map(link => (<li key={link}><a href="#" className="hover:text-black dark:hover:text-white transition-colors duration-300">{link}</a></li>))}</ul></div>))}<div className="mt-16 border-t border-gray-200 dark:border-gray-800 pt-8 text-center text-sm"><p>&copy; {new Date().getFullYear()} AutoCall Pro. All rights reserved.</p></div></div></div>
+            <div className="container mx-auto px-6"><div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12"><div className="md:col-span-2 lg:col-span-1"><h3 className="text-black dark:text-white text-xl font-bold mb-2">AutoCall Pro</h3><p className="max-w-xs">Revolutionizing customer engagement through intelligent automated calling solutions.</p></div>{Object.entries(footerLinks).map(([title, links]) => (<div key={title}><h4 className="font-semibold text-black dark:text-white mb-4">{title}</h4><ul className="space-y-3">{links.map(link => (<li key={link}>{ link === 'Pricing' ? <button onClick={() => setPage('pricing')} className="hover:text-black dark:hover:text-white transition-colors duration-300 text-left">{link}</button> : <a href="#" className="hover:text-black dark:hover:text-white transition-colors duration-300">{link}</a> }</li>))}</ul></div>))}<div className="mt-16 border-t border-gray-200 dark:border-gray-800 pt-8 text-center text-sm"><p>&copy; {new Date().getFullYear()} AutoCall Pro. All rights reserved.</p></div></div></div>
         </footer>
     );
 };
@@ -293,6 +298,157 @@ const LandingPage: React.FC<PageSetterProps> = ({ setPage }) => (
     </>
 );
 
+// --- Pricing Page Component ---
+const pricingPlans = [
+    {
+        name: 'Starter',
+        priceMonthly: 49,
+        priceAnnually: 490,
+        description: 'For individuals and small teams getting started.',
+        features: [
+            '100 credits per month',
+            'AI-powered conversations',
+            'Basic analytics',
+            'Email support',
+        ],
+        cta: 'Get Started',
+        popular: false,
+    },
+    {
+        name: 'Pro',
+        priceMonthly: 99,
+        priceAnnually: 990,
+        description: 'For growing businesses that need more power and flexibility.',
+        features: [
+            '500 credits per month',
+            'Everything in Starter',
+            'Advanced analytics & reporting',
+            'CRM integrations',
+            'Priority support',
+        ],
+        cta: 'Get Started',
+        popular: true,
+    },
+    {
+        name: 'Enterprise',
+        priceMonthly: 'Custom',
+        priceAnnually: 'Custom',
+        description: 'For large organizations with custom needs.',
+        features: [
+            'Unlimited credits',
+            'Everything in Pro',
+            'Dedicated account manager',
+            'Custom integrations & API access',
+            '24/7 premium support',
+        ],
+        cta: 'Contact Sales',
+        popular: false,
+    },
+];
+
+const faqs = [
+    {
+        question: 'What are credits and how are they used?',
+        answer: 'One credit is used for each successful automated call placed through our system, regardless of the duration. You can purchase more credits if you run out.',
+    },
+    {
+        question: 'Can I change my plan later?',
+        answer: 'Yes, you can upgrade or downgrade your plan at any time from your account dashboard. Changes will be prorated.',
+    },
+    {
+        question: 'What happens if I go over my monthly credit limit?',
+        answer: 'If you exceed your monthly credit limit, you have the option to purchase additional credits on a pay-as-you-go basis or upgrade to a higher plan.',
+    },
+    {
+        question: 'Do you offer a free trial?',
+        answer: 'Yes, every new account starts with 5 free credits to test our service. No credit card is required to sign up and try it out.',
+    },
+];
+
+
+const PricingPage: React.FC<PageSetterProps> = ({ setPage }) => {
+    const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
+
+    return (
+        <section id="pricing" className="py-20 text-black dark:text-white">
+            <div className="container mx-auto px-6">
+                <div className="text-center max-w-3xl mx-auto mb-12">
+                    <h2 className="text-4xl md:text-5xl font-extrabold mb-4">Pricing Plans for Every Business</h2>
+                    <p className="text-lg text-gray-600 dark:text-gray-400">Choose the perfect plan to automate your calls and boost your customer engagement.</p>
+                </div>
+
+                <div className="flex justify-center items-center space-x-4 mb-12">
+                    <span className={`font-medium ${billingCycle === 'monthly' ? 'text-black dark:text-white' : 'text-gray-500'}`}>Monthly</span>
+                    <button
+                        onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'annually' : 'monthly')}
+                        className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors bg-gray-200 dark:bg-gray-700"
+                        aria-label="Toggle billing cycle"
+                    >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-black transition-transform ${billingCycle === 'annually' ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                    <span className={`font-medium ${billingCycle === 'annually' ? 'text-black dark:text-white' : 'text-gray-500'}`}>
+                        Annually <span className="text-sm text-green-500">(Save 20%)</span>
+                    </span>
+                </div>
+
+                <div className="grid lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                    {pricingPlans.map(plan => (
+                        <div key={plan.name} className={`relative flex flex-col p-8 rounded-2xl border ${plan.popular ? 'border-black dark:border-white' : 'border-gray-200 dark:border-gray-800'} bg-white dark:bg-black`}>
+                            {plan.popular && <div className="absolute top-0 -translate-y-1/2 bg-black dark:bg-white text-white dark:text-black px-3 py-1 text-sm font-semibold rounded-full self-center">Most Popular</div>}
+                            <h3 className="text-2xl font-semibold mb-2">{plan.name}</h3>
+                            <p className="text-gray-600 dark:text-gray-400 mb-6 flex-grow">{plan.description}</p>
+                            
+                            <div className="mb-6">
+                                {/* FIX: Add type guard to ensure priceAnnually is a number before division */}
+                                {typeof plan.priceMonthly === 'number' && typeof plan.priceAnnually === 'number' ? (
+                                    <>
+                                        <span className="text-5xl font-extrabold">
+                                            ${billingCycle === 'monthly' ? plan.priceMonthly : Math.floor(plan.priceAnnually / 12)}
+                                        </span>
+                                        <span className="text-lg font-medium text-gray-500 dark:text-gray-400">/mo</span>
+                                        {billingCycle === 'annually' && <p className="text-sm text-gray-500">Billed as ${plan.priceAnnually} per year</p>}
+                                    </>
+                                ) : (
+                                    <span className="text-4xl font-extrabold">{plan.priceMonthly}</span>
+                                )}
+                            </div>
+
+                            <button
+                                onClick={() => setPage('signup')}
+                                className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors ${plan.popular ? 'bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200' : 'bg-gray-100 text-black hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700'}`}
+                            >
+                                {plan.cta}
+                            </button>
+                            
+                            <ul className="space-y-4 mt-8 text-gray-700 dark:text-gray-300">
+                                {plan.features.map(feature => (
+                                    <li key={feature} className="flex items-start">
+                                        <CheckIcon className="h-5 w-5 mr-3 mt-0.5 text-black dark:text-white flex-shrink-0" />
+                                        <span>{feature}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="mt-20 max-w-4xl mx-auto">
+                    <h3 className="text-3xl font-bold text-center mb-10">Frequently Asked Questions</h3>
+                    <div className="space-y-6">
+                        {faqs.map(faq => (
+                            <div key={faq.question} className="p-6 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800">
+                                <h4 className="font-semibold text-lg mb-2">{faq.question}</h4>
+                                <p className="text-gray-600 dark:text-gray-400">{faq.answer}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+};
+
+
 // --- Auth Form Component ---
 interface AuthFormProps {
     isSignUp: boolean;
@@ -300,6 +456,7 @@ interface AuthFormProps {
     setErrorMessage: (message: string) => void;
 }
 const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage, setErrorMessage }) => {
+    const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -312,6 +469,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage, setErrorMessage 
             if (isSignUp) {
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 await setDoc(doc(db, "users", userCredential.user.uid), {
+                    name: fullName,
                     email: userCredential.user.email,
                     credits: 5,
                     createdAt: new Date(),
@@ -321,7 +479,21 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage, setErrorMessage 
             }
             // onAuthStateChanged in AuthContext will handle redirect
         } catch (error: any) {
-            setErrorMessage(error.message);
+             switch (error.code) {
+                case 'auth/email-already-in-use':
+                    setErrorMessage('This email is already registered. Please log in.');
+                    break;
+                case 'auth/invalid-credential':
+                     setErrorMessage('Invalid email or password. Please try again.');
+                     break;
+                case 'auth/weak-password':
+                    setErrorMessage('Password is too weak. It should be at least 6 characters.');
+                    break;
+                default:
+                    setErrorMessage('An unexpected error occurred. Please try again.');
+                    console.error('Authentication error:', error);
+                    break;
+            }
         } finally {
             setLoading(false);
         }
@@ -342,11 +514,19 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage, setErrorMessage 
                     </p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                    <div className="-space-y-px rounded-md shadow-sm">
+                    <div className="rounded-md shadow-sm">
+                        {isSignUp && (
+                            <div>
+                                <label htmlFor="full-name" className="sr-only">Full name</label>
+                                <input id="full-name" name="name" type="text" autoComplete="name" required value={fullName} onChange={e => setFullName(e.target.value)}
+                                    className="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-black focus:outline-none focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm"
+                                    placeholder="Full name" />
+                            </div>
+                        )}
                         <div>
                             <label htmlFor="email-address" className="sr-only">Email address</label>
                             <input id="email-address" name="email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)}
-                                className="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-black focus:outline-none focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm"
+                                className={`relative block w-full appearance-none border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-black focus:outline-none focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm ${isSignUp ? 'rounded-none' : 'rounded-t-md'}`}
                                 placeholder="Email address" />
                         </div>
                         <div>
@@ -423,6 +603,8 @@ const AppContent: React.FC = () => {
               return <AuthForm isSignUp={true} setPage={setPage} setErrorMessage={setErrorMessage} />;
           case 'dashboard':
               return currentUser ? <Dashboard /> : <AuthForm isSignUp={false} setPage={setPage} setErrorMessage={setErrorMessage} />;
+          case 'pricing':
+              return <PricingPage setPage={setPage} />;
           case 'landing':
           default:
               return <LandingPage setPage={setPage} />;
@@ -436,7 +618,7 @@ const AppContent: React.FC = () => {
         {errorMessage && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative container mx-auto mt-4" role="alert">{errorMessage}</div>}
         {renderPage()}
       </main>
-      {page === 'landing' && <Footer />}
+      {(page === 'landing' || page === 'pricing') && <Footer setPage={setPage} />}
     </div>
   );
 };

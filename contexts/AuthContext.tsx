@@ -7,6 +7,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 export interface AppUser {
   uid: string;
   email: string | null;
+  name: string | null;
 }
 
 interface AuthContextType {
@@ -38,17 +39,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user: FirebaseUser | null) => {
       if (user) {
-        const appUser = { uid: user.uid, email: user.email };
-        setCurrentUser(appUser);
-        
-        // Fetch credits
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          setCredits(userDoc.data().credits);
-        } else {
-          setCredits(0); // or handle as an error
-        }
+        
+        const userName = userDoc.exists() ? userDoc.data().name : null;
+        const userCredits = userDoc.exists() ? userDoc.data().credits : 0;
+
+        const appUser: AppUser = { 
+          uid: user.uid, 
+          email: user.email, 
+          name: userName 
+        };
+
+        setCurrentUser(appUser);
+        setCredits(userCredits);
+
       } else {
         setCurrentUser(null);
         setCredits(null);

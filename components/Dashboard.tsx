@@ -8,12 +8,17 @@ const Dashboard: React.FC = () => {
     if (!currentUser) {
         return <div>Loading...</div>; // Or a redirect
     }
+    
+    // Capitalize the first letter of the name
+    const displayName = currentUser.name
+        ? currentUser.name.charAt(0).toUpperCase() + currentUser.name.slice(1)
+        : currentUser.email;
 
     return (
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 text-black dark:text-white">
             <div className="max-w-4xl mx-auto">
                 <div className="mb-8">
-                    <h1 className="text-3xl md:text-4xl font-bold mb-2">Welcome, {currentUser.email}</h1>
+                    <h1 className="text-3xl md:text-4xl font-bold mb-2">Welcome back, {displayName}</h1>
                     <p className="text-lg text-gray-600 dark:text-gray-400">Here's your command center.</p>
                 </div>
                 
