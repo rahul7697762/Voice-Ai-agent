@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, FormEvent } from 'react';
 import { auth, db } from './firebase';
 import { 
@@ -471,6 +472,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage }) => {
     const [countryCode, setCountryCode] = useState('+1');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [phoneError, setPhoneError] = useState('');
+    const [emailError, setEmailError] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
     const [loading, setLoading] = useState(false);
     
@@ -507,6 +509,19 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage }) => {
         return true;
     };
 
+    const validateEmail = (): boolean => {
+        if (!email.trim()) {
+            setEmailError('Email address is required.');
+            return false;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setEmailError('Please enter a valid email address.');
+            return false;
+        }
+        setEmailError('');
+        return true;
+    };
+
     const handleGoogleSignIn = async () => {
         setLoading(true);
         setErrorMessage('');
@@ -529,10 +544,24 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage }) => {
             }
             // onAuthStateChanged in AuthContext will handle redirect
         } catch (error: any) {
-            if (error.code !== 'auth/popup-closed-by-user') {
-                setErrorMessage('Failed to sign in with Google. Please try again.');
+             if (error.code === 'auth/popup-closed-by-user') {
+                // User closed the popup, so we don't show an error.
+                setLoading(false);
+                return;
+            }
+
+            let userFriendlyMessage = 'Failed to sign in with Google. Please try again.';
+            if (error.code === 'auth/unauthorized-domain') {
+                userFriendlyMessage = 'This domain is not authorized for Google Sign-In. Please contact support.';
+                // Log a more detailed message for the developer
+                console.error(
+                    'Firebase Auth Error: The current domain is not authorized in your Firebase project. ' +
+                    'Go to the Firebase Console -> Authentication -> Settings -> Authorized domains, and add your domain.'
+                );
+            } else {
                 console.error('Google Sign-In error:', error);
             }
+            setErrorMessage(userFriendlyMessage);
         } finally {
             setLoading(false);
         }
@@ -540,9 +569,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage }) => {
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (isSignUp && !validatePhoneNumber()) {
+        const isPhoneValid = validatePhoneNumber(); // Always runs, but logic inside checks `isSignUp`
+        const isEmailValid = validateEmail();
+
+        if (!isPhoneValid || !isEmailValid) {
             return;
         }
+
         setLoading(true);
         setErrorMessage('');
         try {
@@ -645,9 +678,20 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage }) => {
 
                     <div>
                         <label htmlFor="email-address" className="sr-only">Email address</label>
-                        <input id="email-address" name="email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white placeholder-gray-500"
-                            placeholder="Email address" />
+                        <input id="email-address" name="email" type="email" autoComplete="email" required value={email} 
+                            onChange={e => {
+                                setEmail(e.target.value);
+                                if (emailError && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value)) {
+                                    setEmailError('');
+                                }
+                            }}
+                            onBlur={validateEmail}
+                            className={`w-full px-4 py-2 border rounded-md focus:ring-2 dark:bg-gray-800 dark:border-gray-600 dark:text-white placeholder-gray-500 ${emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-black'}`}
+                            placeholder="Email address" 
+                            aria-invalid={!!emailError}
+                            aria-describedby="email-error"
+                            />
+                        {emailError && <p id="email-error" className="mt-2 text-sm text-red-600 dark:text-red-400">{emailError}</p>}
                     </div>
                     <div>
                         <label htmlFor="password" className="sr-only">Password</label>
