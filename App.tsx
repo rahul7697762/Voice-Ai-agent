@@ -4,8 +4,10 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Dashboard from './components/Dashboard';
 
@@ -85,6 +87,14 @@ const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
     <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.052-.143z" clipRule="evenodd" />
   </svg>
+);
+const GoogleIcon: React.FC<{ className?: string }> = ({ className }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+        <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039L38.485 13.85C34.643 10.32 29.643 8 24 8c-8.837 0-16 7.163-16 16s7.163 16 16 16c9.237 0 15.25-6.543 15.25-15.5c0-1.018-.106-2.02-.289-3.007l.024.007H43.611z"/>
+        <path fill="#FF3D00" d="M6.306 14.691c-2.344 3.469-3.35 7.825-2.81 12.293l8.604-6.641l-4.043-3.111z"/>
+        <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-4.819c-1.902 1.225-4.226 1.939-6.837 1.939c-4.4 0-8.233-2.286-10.42-5.636l-8.498 6.598C9.018 40.62 15.93 44 24 44z"/>
+        <path fill="#1976D2" d="M43.611 20.083L43.595 20L36.62 20l.024.007c.205 1.05.31 2.12.31 3.233c0 4.156-1.58 7.893-4.113 10.669l6.237 4.852C42.844 35.132 44 30.076 44 24c0-1.582-.234-3.12-.65-4.582z"/>
+    </svg>
 );
 
 
@@ -453,16 +463,86 @@ const PricingPage: React.FC<PageSetterProps> = ({ setPage }) => {
 interface AuthFormProps {
     isSignUp: boolean;
     setPage: (page: Page) => void;
-    setErrorMessage: (message: string) => void;
 }
-const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage, setErrorMessage }) => {
+const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage }) => {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [countryCode, setCountryCode] = useState('+1');
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [phoneError, setPhoneError] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
     const [loading, setLoading] = useState(false);
+    
+    const countryCodes = [
+      { code: '+1', country: 'USA/CAN' },
+      { code: '+44', country: 'UK' },
+      { code: '+91', country: 'India' },
+      { code: '+61', country: 'Australia' },
+      { code: '+81', country: 'Japan' },
+      { code: '+49', country: 'Germany' },
+    ];
+    
+    const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const numericValue = e.target.value.replace(/\D/g, '');
+        if (numericValue.length <= 10) {
+            setPhoneNumber(numericValue);
+            if (phoneError && numericValue.length === 10) {
+                setPhoneError('');
+            }
+        }
+    };
+    
+    const validatePhoneNumber = (): boolean => {
+        if (!isSignUp) return true; // Only validate for signup
+        if (!phoneNumber.trim()) {
+            setPhoneError('Phone number is required for signup.');
+            return false;
+        }
+        if (!/^\d{10}$/.test(phoneNumber)) {
+            setPhoneError('Please enter a valid 10-digit phone number.');
+            return false;
+        }
+        setPhoneError('');
+        return true;
+    };
+
+    const handleGoogleSignIn = async () => {
+        setLoading(true);
+        setErrorMessage('');
+        const provider = new GoogleAuthProvider();
+        try {
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+            
+            // Check if user exists in Firestore, if not, create a new document
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (!userDoc.exists()) {
+                 await setDoc(userDocRef, {
+                    name: user.displayName,
+                    email: user.email,
+                    credits: 5,
+                    createdAt: new Date(),
+                });
+            }
+            // onAuthStateChanged in AuthContext will handle redirect
+        } catch (error: any) {
+            if (error.code !== 'auth/popup-closed-by-user') {
+                setErrorMessage('Failed to sign in with Google. Please try again.');
+                console.error('Google Sign-In error:', error);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
+        if (isSignUp && !validatePhoneNumber()) {
+            return;
+        }
         setLoading(true);
         setErrorMessage('');
         try {
@@ -471,6 +551,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage, setErrorMessage 
                 await setDoc(doc(db, "users", userCredential.user.uid), {
                     name: fullName,
                     email: userCredential.user.email,
+                    phoneNumber: `${countryCode}${phoneNumber}`,
                     credits: 5,
                     createdAt: new Date(),
                 });
@@ -501,46 +582,90 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage, setErrorMessage 
 
     return (
         <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-            <div className="w-full max-w-md space-y-8">
+            <div className="w-full max-w-md space-y-8 bg-white dark:bg-gray-900/50 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800">
                 <div>
                     <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        {isSignUp ? 'Create your account' : 'Sign in to your account'}
+                        {isSignUp ? 'Create your account' : 'Welcome back'}
                     </h2>
                     <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-                        Or{' '}
+                        {isSignUp ? 'Already have an account? ' : 'New to AutoCall Pro? '}
                         <button onClick={() => setPage(isSignUp ? 'login' : 'signup')} className="font-medium text-black dark:text-white hover:underline">
-                            {isSignUp ? 'sign in to your existing account' : 'start your 14-day free trial'}
+                            {isSignUp ? 'Sign in' : 'Create an account'}
                         </button>
                     </p>
                 </div>
-                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-                    <div className="rounded-md shadow-sm">
-                        {isSignUp && (
-                            <div>
-                                <label htmlFor="full-name" className="sr-only">Full name</label>
-                                <input id="full-name" name="name" type="text" autoComplete="name" required value={fullName} onChange={e => setFullName(e.target.value)}
-                                    className="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-black focus:outline-none focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm"
-                                    placeholder="Full name" />
-                            </div>
-                        )}
-                        <div>
-                            <label htmlFor="email-address" className="sr-only">Email address</label>
-                            <input id="email-address" name="email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)}
-                                className={`relative block w-full appearance-none border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-black focus:outline-none focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm ${isSignUp ? 'rounded-none' : 'rounded-t-md'}`}
-                                placeholder="Email address" />
-                        </div>
-                        <div>
-                            <label htmlFor="password" className="sr-only">Password</label>
-                            <input id="password" name="password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)}
-                                className="relative block w-full appearance-none rounded-none rounded-b-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-black focus:outline-none focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm"
-                                placeholder="Password" />
-                        </div>
+
+                <div>
+                    <button 
+                        onClick={handleGoogleSignIn}
+                        disabled={loading}
+                        className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50">
+                        <GoogleIcon className="h-5 w-5 mr-2" />
+                        Continue with Google
+                    </button>
+                </div>
+
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-300 dark:border-gray-700" />
                     </div>
+                    <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-white dark:bg-gray-900/50 text-gray-500 dark:text-gray-400">
+                            OR
+                        </span>
+                    </div>
+                </div>
+
+                <form className="space-y-6" onSubmit={handleSubmit}>
+                    {isSignUp && (
+                        <div>
+                            <label htmlFor="full-name" className="sr-only">Full name</label>
+                            <input id="full-name" name="name" type="text" autoComplete="name" required value={fullName} onChange={e => setFullName(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white placeholder-gray-500"
+                                placeholder="Full name" />
+                        </div>
+                    )}
+                    
+                    {isSignUp && (
+                         <div>
+                            <label htmlFor="phoneNumber" className="sr-only">Phone Number</label>
+                            <div className="flex">
+                                <select
+                                    id="countryCode" name="countryCode" value={countryCode} onChange={(e) => setCountryCode(e.target.value)}
+                                    className="px-3 py-2 border border-gray-300 rounded-l-md focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white" aria-label="Country Code">
+                                    {countryCodes.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                </select>
+                                <input type="tel" id="phoneNumber" name="phoneNumber" value={phoneNumber} onChange={handlePhoneNumberChange} onBlur={validatePhoneNumber} placeholder="Phone number"
+                                className={`w-full px-4 py-2 border rounded-r-md focus:ring-2 dark:bg-gray-800 dark:text-white placeholder-gray-500 ${phoneError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-black'}`}
+                                required aria-invalid={!!phoneError} aria-describedby="phone-error" />
+                            </div>
+                            {phoneError && <p id="phone-error" className="mt-2 text-sm text-red-600 dark:text-red-400">{phoneError}</p>}
+                        </div>
+                    )}
+
+                    <div>
+                        <label htmlFor="email-address" className="sr-only">Email address</label>
+                        <input id="email-address" name="email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white placeholder-gray-500"
+                            placeholder="Email address" />
+                    </div>
+                    <div>
+                        <label htmlFor="password" className="sr-only">Password</label>
+                        <input id="password" name="password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white placeholder-gray-500"
+                            placeholder="Password" />
+                    </div>
+
+                    {errorMessage && (
+                        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 dark:bg-red-900/30 dark:text-red-300 dark:border-red-400" role="alert">
+                            <p>{errorMessage}</p>
+                        </div>
+                    )}
 
                     <div>
                         <button type="submit" disabled={loading}
-                            className="group relative flex w-full justify-center rounded-md border border-transparent bg-black py-2 px-4 text-sm font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 dark:bg-white dark:text-black dark:hover:bg-gray-200 disabled:opacity-50">
-                            {loading ? 'Processing...' : (isSignUp ? 'Sign up' : 'Sign in')}
+                            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black dark:bg-white dark:text-black dark:hover:bg-gray-200 disabled:opacity-50">
+                            {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign in')}
                         </button>
                     </div>
                 </form>
@@ -553,7 +678,6 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage, setErrorMessage 
 const AppContent: React.FC = () => {
   const [theme, setTheme] = useState('light');
   const [page, setPage] = useState<Page>('landing');
-  const [errorMessage, setErrorMessage] = useState('');
   const { currentUser, loading: loadingAuth } = useAuth();
 
   useEffect(() => {
@@ -598,11 +722,11 @@ const AppContent: React.FC = () => {
       
       switch(page) {
           case 'login':
-              return <AuthForm isSignUp={false} setPage={setPage} setErrorMessage={setErrorMessage} />;
+              return <AuthForm isSignUp={false} setPage={setPage} />;
           case 'signup':
-              return <AuthForm isSignUp={true} setPage={setPage} setErrorMessage={setErrorMessage} />;
+              return <AuthForm isSignUp={true} setPage={setPage} />;
           case 'dashboard':
-              return currentUser ? <Dashboard /> : <AuthForm isSignUp={false} setPage={setPage} setErrorMessage={setErrorMessage} />;
+              return currentUser ? <Dashboard /> : <AuthForm isSignUp={false} setPage={setPage} />;
           case 'pricing':
               return <PricingPage setPage={setPage} />;
           case 'landing':
@@ -615,7 +739,6 @@ const AppContent: React.FC = () => {
     <div className="bg-white dark:bg-black min-h-screen font-sans transition-colors duration-300">
       <Header theme={theme} toggleTheme={toggleTheme} setPage={setPage} />
       <main>
-        {errorMessage && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative container mx-auto mt-4" role="alert">{errorMessage}</div>}
         {renderPage()}
       </main>
       {(page === 'landing' || page === 'pricing') && <Footer setPage={setPage} />}

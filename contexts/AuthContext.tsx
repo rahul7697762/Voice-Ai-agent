@@ -8,6 +8,7 @@ export interface AppUser {
   uid: string;
   email: string | null;
   name: string | null;
+  phoneNumber?: string | null;
 }
 
 interface AuthContextType {
@@ -42,13 +43,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const userDocRef = doc(db, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
         
-        const userName = userDoc.exists() ? userDoc.data().name : null;
-        const userCredits = userDoc.exists() ? userDoc.data().credits : 0;
+        const userData = userDoc.exists() ? userDoc.data() : null;
+        const userName = userData ? userData.name : null;
+        const userCredits = userData ? userData.credits : 0;
+        const userPhoneNumber = userData ? userData.phoneNumber : null;
 
         const appUser: AppUser = { 
           uid: user.uid, 
           email: user.email, 
-          name: userName 
+          name: userName,
+          phoneNumber: userPhoneNumber,
         };
 
         setCurrentUser(appUser);

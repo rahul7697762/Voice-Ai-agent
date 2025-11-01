@@ -15,6 +15,7 @@ const CallRequestForm: React.FC = () => {
   const { currentUser, credits, updateCredits } = useAuth();
   const [countryCode, setCountryCode] = useState('+1');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [formData, setFormData] = useState({
     fullName: '',
     callTime: 'Immediately',
@@ -39,10 +40,29 @@ const CallRequestForm: React.FC = () => {
   
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
-    // Allow only numeric input
-    if (/^\d*$/.test(value)) {
-        setPhoneNumber(value);
+    // Strip all non-digit characters to be more robust
+    const numericValue = value.replace(/\D/g, '');
+    // Limit to 10 digits
+    if (numericValue.length <= 10) {
+        setPhoneNumber(numericValue);
+        // Clear error as user corrects the input
+        if (phoneError && numericValue.length === 10) {
+            setPhoneError('');
+        }
     }
+  };
+
+  const validatePhoneNumber = (): boolean => {
+    if (!phoneNumber.trim()) {
+        setPhoneError('Phone number is required.');
+        return false;
+    }
+    if (!/^\d{10}$/.test(phoneNumber)) {
+        setPhoneError('Please enter a valid 10-digit phone number.');
+        return false;
+    }
+    setPhoneError('');
+    return true;
   };
 
 
@@ -50,19 +70,14 @@ const CallRequestForm: React.FC = () => {
     e.preventDefault();
     setStatus({ type: '', message: '' });
 
+    // Use new validation function
+    if (!validatePhoneNumber()) {
+        return;
+    }
+
     if (!currentUser) {
       setStatus({ type: 'error', message: 'Please sign in to request a call.' });
       return;
-    }
-    
-    if (!phoneNumber) {
-      setStatus({ type: 'error', message: 'Phone number is required.' });
-      return;
-    }
-
-    if (!/^\d{10}$/.test(phoneNumber)) {
-        setStatus({ type: 'error', message: 'Please enter a valid 10-digit phone number.' });
-        return;
     }
 
     if (credits === null || credits <= 0) {
@@ -153,13 +168,16 @@ const CallRequestForm: React.FC = () => {
               name="phoneNumber"
               value={phoneNumber}
               onChange={handlePhoneNumberChange}
+              onBlur={validatePhoneNumber}
               placeholder="10-digit number"
-              className="w-full px-4 py-2 border border-gray-300 rounded-r-md focus:ring-2 focus:ring-black dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+              className={`w-full px-4 py-2 border rounded-r-md focus:ring-2 dark:bg-gray-800 dark:text-white ${phoneError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 dark:border-gray-600 focus:ring-black'}`}
               required
               disabled={!canSubmit}
-              maxLength={10}
+              aria-invalid={!!phoneError}
+              aria-describedby="phone-error"
             />
           </div>
+           {phoneError && <p id="phone-error" className="mt-2 text-sm text-red-600 dark:text-red-400">{phoneError}</p>}
         </div>
 
         <div>
