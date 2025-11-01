@@ -195,7 +195,7 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, setPage }) => {
 
 const Hero: React.FC<PageSetterProps> = ({ setPage }) => {
     return (
-        <section className="relative py-20 md:py-32 overflow-hidden">
+        <section className="relative py-45 md:py-72 overflow-hidden">
             {/* Video Background and Overlay */}
             <div className="absolute inset-0 z-0">
                 <video
@@ -205,7 +205,7 @@ const Hero: React.FC<PageSetterProps> = ({ setPage }) => {
                     playsInline
                     className="w-full h-full object-cover"
                 >
-                    <source src="https://static.videezy.com/system/resources/previews/000/044/244/original/3_20.mp4" type="video/mp4" />
+                    <source src="Automated_Call_System_Video_Generated.mp4" type="video/mp4" />
                 </video>
                 <div className="absolute inset-0 bg-black/60"></div>
             </div>
