@@ -2,16 +2,17 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// Your web app's Firebase configuration, using the valid keys you provided.
+
+// Your web app's Firebase configuration, using environment variables.
 const firebaseConfig = {
-  apiKey: "AIzaSyDlN5J2tlxo2rJ9WaHWtmK_HWNKCmPjGAE",
-  authDomain: "automate-sales-call.firebaseapp.com",
-  databaseURL: "https://automate-sales-call-default-rtdb.firebaseio.com",
-  projectId: "automate-sales-call",
-  storageBucket: "automate-sales-call.firebasestorage.app",
-  messagingSenderId: "100854714204",
-  appId: "1:100854714204:web:77e064cdb9819b81063b99",
-  measurementId: "G-0Q3XLSZC27"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase

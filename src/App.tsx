@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent, FC } from 'react';
 import { auth, db } from './firebase';
 import { 
   createUserWithEmailAndPassword, 
@@ -14,7 +14,7 @@ import Dashboard from './components/Dashboard';
 
 
 // --- SVG Icon Components (existing) ---
-const MenuIcon: React.FC<{ className?: string }> = ({ className }) => (
+const MenuIcon: FC<{ className?: string }> = ({ className }) => (
   <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
   </svg>
@@ -113,7 +113,7 @@ interface HeaderProps {
     setPage: (page: Page) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, setPage }) => {
+const Header: FC<HeaderProps> = ({ theme, toggleTheme, setPage }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const { currentUser } = useAuth();
     
@@ -190,10 +190,10 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, setPage }) => {
                 </div>
             )}
         </header>
-    );
+    )// This was the missing closing parenthesis
 };
 
-const Hero: React.FC<PageSetterProps> = ({ setPage }) => {
+const Hero: FC<PageSetterProps> = ({ setPage }) => {
     return (
         <section className="relative py-45 md:py-72 overflow-hidden">
             {/* Video Background and Overlay */}
@@ -204,8 +204,8 @@ const Hero: React.FC<PageSetterProps> = ({ setPage }) => {
                     muted
                     playsInline
                     className="w-full h-full object-cover"
-                >
-                    <source src="Automated_Call_System_Video_Generated.mp4" type="video/mp4" />
+                > 
+                    <source src="../public/Automated_Call_System_Video_Generated.mp4" type="video/mp4" />
                 </video>
                 <div className="absolute inset-0 bg-black/60"></div>
             </div>
@@ -242,7 +242,7 @@ const useCasesData = [
     { icon: RestaurantIcon, title: "Restaurants", description: "Handle reservation requests, takeout orders, and customer feedback collection automatically.", points: ["Reservation management", "Order processing", "Feedback collection"] }
 ];
 
-const UseCases: React.FC = () => (
+const UseCases: FC = () => (
     <section id="use-cases" className="py-20 bg-gray-50 dark:bg-gray-900 text-black dark:text-white">
         <div className="container mx-auto px-6">
             <div className="text-center max-w-3xl mx-auto mb-12">
@@ -269,7 +269,7 @@ const featuresData = [
   { icon: IntegrationIcon, title: "Easy Integration", description: "Seamlessly integrate with your existing CRM and tools." }
 ];
 
-const Features: React.FC = () => (
+const Features: FC = () => (
     <section id="features" className="py-20 text-black dark:text-white">
         <div className="container mx-auto px-6">
             <div className="text-center max-w-3xl mx-auto mb-12">
@@ -289,7 +289,7 @@ const Features: React.FC = () => (
     </section>
 );
 
-const CTA: React.FC<PageSetterProps> = ({ setPage }) => (
+const CTA: FC<PageSetterProps> = ({ setPage }) => (
     <section className="bg-gray-50 dark:bg-gray-900 py-20 text-black dark:text-white">
         <div className="container mx-auto px-6 text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Transform Your Customer Engagement?</h2>
@@ -302,7 +302,7 @@ const CTA: React.FC<PageSetterProps> = ({ setPage }) => (
     </section>
 );
 
-const Footer: React.FC<PageSetterProps> = ({ setPage }) => {
+const Footer: FC<PageSetterProps> = ({ setPage }) => {
     const footerLinks = { Product: ["Features", "Pricing", "Integrations", "API"], Company: ["About", "Careers", "Press", "Contact"], Support: ["Help Center", "Documentation", "Status", "Community"] };
     return (
         <footer className="py-16 text-gray-600 dark:text-gray-400">
@@ -312,7 +312,7 @@ const Footer: React.FC<PageSetterProps> = ({ setPage }) => {
 };
 
 // --- Landing Page Wrapper ---
-const LandingPage: React.FC<PageSetterProps> = ({ setPage }) => (
+const LandingPage: FC<PageSetterProps> = ({ setPage }) => (
     <>
         <Hero setPage={setPage} />
         <UseCases />
@@ -389,7 +389,7 @@ const faqs = [
 ];
 
 
-const PricingPage: React.FC<PageSetterProps> = ({ setPage }) => {
+const PricingPage: FC<PageSetterProps> = ({ setPage }) => {
     const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
 
     return (
@@ -477,7 +477,7 @@ interface AuthFormProps {
     isSignUp: boolean;
     setPage: (page: Page) => void;
 }
-const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage }) => {
+const AuthForm: FC<AuthFormProps> = ({ isSignUp, setPage }) => {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -731,7 +731,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ isSignUp, setPage }) => {
 };
 
 // --- App Content Component ---
-const AppContent: React.FC = () => {
+const AppContent: FC = () => {
   const [theme, setTheme] = useState('light');
   const [page, setPage] = useState<Page>('landing');
   const { currentUser, loading: loadingAuth } = useAuth();
@@ -804,7 +804,7 @@ const AppContent: React.FC = () => {
 
 
 // --- Main App Component ---
-const App: React.FC = () => {
+const App: FC = () => {
   return (
     <AuthProvider>
       <AppContent />

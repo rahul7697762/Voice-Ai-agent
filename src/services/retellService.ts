@@ -1,69 +1,168 @@
-// This service is responsible for making API calls to your own backend server.
-// Your backend server will then securely communicate with the Retell API.
-// IMPORTANT: Do NOT call the Retell API directly from the frontend with your API key.
+import Retell from 'retell-sdk';
+import { db } from "../firebase";
+import { doc, getDoc, updateDoc, increment } from "firebase/firestore";
 
-interface CallDetails {
-    agentId: string;
-    toNumber: string;
-    fromNumber: string;
-    userId: string;
-    callData: Record<string, any>;
+// Initialize the Retell client with API key from environment variables
+const apiKey = import.meta.env.VITE_RETELL_API_KEY || '';
+
+if (!apiKey) {
+  console.warn('Retell API key not found. Please set VITE_RETELL_API_KEY in your .env file');
 }
 
-const makeCall = async (details: CallDetails): Promise<{ callId: string }> => {
-    console.log('Simulating call request with details:', details);
+const retellClient = new Retell({
+  apiKey,
+  // Optional: Configure retries and timeouts
+  maxRetries: 2,
+  timeout: 60 * 1000, // 1 minute
+});
 
-    // --- DEVELOPMENT MOCK ---
-    // This is a mock API call. In a real application, you would remove this
-    // and use the fetch implementation below to call your backend.
-    // This mock simulates a successful call to allow frontend testing without a backend.
-    
-    // Check for placeholder Agent ID from the form component to guide the developer.
-    if (details.agentId === 'YOUR_AGENT_ID_HERE') {
-        const errorMessage = "Please configure your Retell Agent ID in components/CallRequestForm.tsx before making calls.";
-        console.error(errorMessage);
-        // Simulate a configuration error to be displayed in the UI.
-        throw new Error(errorMessage);
-    }
+type LanguageCode = 'en-US' | 'en-GB' | 'es-ES' | 'fr-FR' | 'de-DE' | 'it-IT' | 'pt-BR' | 'ja-JP' | 'ko-KR' | 'zh-CN' | 'hi-IN';
 
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+interface CreateAgentOptions {
+  llmId: string;
+  voiceId: string;
+  agentName?: string;
+  language?: LanguageCode;
+  prompt?: string;
+  firstSentence?: string;
+}
 
-    // Simulate a successful response from the backend
-    console.log('Mock call successful!');
-    return { callId: `mock_call_${Date.now()}` };
+interface CallOptions {
+  agentId: string;
+  toNumber: string;
+  fromNumber?: string;
+  callData?: Record<string, any>;
+  userId: string;
+}
 
-    /*
-    // --- PRODUCTION IMPLEMENTATION ---
-    // When you have a backend, remove the mock code above and use this fetch call.
-    
-    // This is the endpoint on your own backend server that you will create.
-    const YOUR_BACKEND_ENDPOINT = '/api/make-call'; 
-
+export const retellService = {
+  /**
+   * Create a new Retell agent
+   */
+  async createAgent(options: CreateAgentOptions) {
     try {
-        const response = await fetch(YOUR_BACKEND_ENDPOINT, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(details),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred.' }));
-            // Throws an error with the message from the backend, or a default message.
-            throw new Error(errorData.message || 'Failed to initiate the call.');
-        }
-
-        return await response.json();
+      // Create agent with minimal required fields
+      const params: any = {
+        voice_id: options.voiceId,
+        ...(options.agentName && { agent_name: options.agentName }),
+        ...(options.language && { language: options.language }),
+        ...(options.prompt && { prompt: options.prompt }),
+        ...(options.firstSentence && { first_sentence: options.firstSentence }),
+      };
+      
+      // Add LLM configuration if provided
+      if (options.llmId) {
+        params.llm_websocket_url = `wss://api.retellai.com/llm/${options.llmId}`;
+      }
+      
+      const response = await retellClient.agent.create(params);
+      return response;
     } catch (error) {
-        console.error("Error connecting to the backend service:", error);
-        throw new Error("Could not connect to the call service. Please ensure the backend is running.");
+      console.error('Error creating Retell agent:', error);
+      throw error;
     }
-    */
-};
+  },
 
-const retellService = {
-    makeCall,
+  /**
+   * Make a phone call using Retell
+   */
+  async makeCall(options: CallOptions & { customerData?: Record<string, any> }) {
+    try {
+      const userDocRef = doc(db, "users", options.userId);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists() || userDoc.data().credits <= 0) {
+        throw new Error("Insufficient credits. Please upgrade your plan.");
+      }
+
+      console.log('Initiating call with options:', {
+        toNumber: options.toNumber,
+        customerData: options.customerData
+      });
+
+      const response = await fetch('https://api.retellai.com/v2/create-phone-call', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          from_number: '+12294588054',
+          to_number: options.toNumber,
+          override_agent_id: 'agent_2da0e42e38e963417e9a1c56da',
+          retell_llm_dynamic_variables: {
+            customer_name: options.customerData?.name || 'Valued Customer',
+            location: options.customerData?.location || 'Unknown',
+            property_type: options.customerData?.propertyType || 'Not specified',
+            budget: options.customerData?.budget || 'Not specified'
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('API Error Response:', errorData);
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+
+      await updateDoc(userDocRef, {
+        credits: increment(-1),
+      });
+
+      const responseData = await response.json();
+      console.log('Call initiated successfully:', responseData);
+      return responseData;
+    } catch (error) {
+      console.error('Error making call with Retell:', {
+        error,
+        message: error.message,
+        status: error.status,
+        response: error.response?.data,
+      });
+      throw new Error(`Failed to initiate call: ${error.message || 'Unknown error'}`);
+    }
+  },
+
+  /**
+   * List all available voices
+   */
+  async listVoices() {
+    try {
+      const response = await retellClient.voice.list();
+      return response;
+    } catch (error) {
+      console.error('Error listing voices:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get call details
+   */
+  async getCallDetails(callId: string) {
+    try {
+      const response = await retellClient.call.retrieve(callId);
+      return response;
+    } catch (error) {
+      console.error('Error getting call details:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * End an ongoing call
+   */
+  async endCall(callId: string) {
+    try {
+      // Note: The actual method might be different based on the SDK version
+      // This is a placeholder - check the SDK documentation for the correct method
+      const response = await (retellClient.call as any).end(callId);
+      return response;
+    } catch (error) {
+      console.error('Error ending call:', error);
+      throw error;
+    }
+  },
 };
 
 export default retellService;

@@ -9,9 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "firebase": "^12.5.0"
+    "@google/genai": "^1.28.0",
+    "firebase": "^10.6.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "retell-sdk": "^4.56.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
