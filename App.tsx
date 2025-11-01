@@ -195,31 +195,43 @@ const Header: React.FC<HeaderProps> = ({ theme, toggleTheme, setPage }) => {
 
 const Hero: React.FC<PageSetterProps> = ({ setPage }) => {
     return (
-        <section className="text-black dark:text-white py-20 md:py-32">
-            <div className="container mx-auto px-6 text-center">
-                <h1 className="text-4xl md:text-6xl font-extrabold leading-tight mb-4">
+        <section className="relative py-20 md:py-32 overflow-hidden">
+            {/* Video Background and Overlay */}
+            <div className="absolute inset-0 z-0">
+                <video
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover"
+                >
+                    <source src="https://static.videezy.com/system/resources/previews/000/044/244/original/3_20.mp4" type="video/mp4" />
+                </video>
+                <div className="absolute inset-0 bg-black/60"></div>
+            </div>
+
+            {/* Content */}
+            <div className="relative z-10 container mx-auto px-6 text-center text-white">
+                <h1 className="text-4xl md:text-6xl font-extrabold leading-tight mb-4" style={{ textShadow: '2px 2px 8px rgba(0,0,0,0.7)' }}>
                     Automated Call System for Every Business
                 </h1>
-                <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto mb-8">
+                <p className="text-lg md:text-xl text-gray-200 max-w-3xl mx-auto mb-8" style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.7)' }}>
                     Transform your customer engagement with intelligent automated calling solutions. From real estate to retail, streamline your operations and boost conversions.
                 </p>
                 <div className="flex justify-center space-x-4">
-                    <button onClick={() => setPage('signup')} className="bg-black text-white font-semibold px-8 py-3 rounded-md hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition-colors duration-300">
+                    <button onClick={() => setPage('signup')} className="bg-white text-black font-semibold px-8 py-3 rounded-md hover:bg-gray-200 transition-colors duration-300 transform hover:scale-105">
                         Start Free Trial
                     </button>
-                    <a href="#" className="bg-gray-100 text-black font-semibold px-8 py-3 rounded-md hover:bg-gray-200 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700 transition-colors duration-300">
+                    <a href="#" className="bg-white/20 backdrop-blur-sm border border-white/30 text-white font-semibold px-8 py-3 rounded-md hover:bg-white/30 transition-colors duration-300 transform hover:scale-105">
                         View Demo
                     </a>
                 </div>
-                <div className="mt-16 mx-auto max-w-5xl">
-                  <div className="aspect-video bg-gray-100 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl shadow-gray-400/20 dark:shadow-gray-900/50 overflow-hidden">
-                    <img src="https://picsum.photos/seed/autocall/1200/675" alt="Automated Call System Dashboard" className="w-full h-full object-cover"/>
-                  </div>
-                </div>
+                {/* The static image preview section is removed to give full focus to the video background */}
             </div>
         </section>
     );
 };
+
 
 const useCasesData = [
     { icon: RealEstateIcon, title: "Real Estate", description: "Automate property inquiries, schedule viewings, and provide financing information to potential buyers.", points: ["Property search automation", "Viewing appointments", "Financing assistance"] },
